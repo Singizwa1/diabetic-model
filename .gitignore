@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.pyo
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Streamlit
+.streamlit/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Generated models and artifacts
+saved_model/*.pkl
+saved_model/*.joblib
+saved_model/*.pickle
+saved_model/*.sav
+
+# Local data inputs and generated outputs
+/data/*.xlsx
+/data/*.xls
+/data/*.csv
+!/data/.gitkeep
+
+# Temporary and log files
+*.log
+*.tmp
+*.bak
+*.orig

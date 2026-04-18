@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏥 Diabetes Risk Prediction</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 600px;
+            padding: 40px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        h1 {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 20px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+        }
+        
+        .result.show {
+            display: block;
+        }
+        
+        .result-low {
+            background-color: #d4edda;
+            border-left: 5px solid #28a745;
+        }
+        
+        .result-medium {
+            background-color: #fff3cd;
+            border-left: 5px solid #ffc107;
+        }
+        
+        .result-high {
+            background-color: #f8d7da;
+            border-left: 5px solid #dc3545;
+        }
+        
+        .result h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .result p {
+            font-size: 16px;
+            margin: 5px 0;
+        }
+        
+        .probability {
+            font-size: 28px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            display: none;
+            font-weight: 600;
+        }
+        
+        .status.show {
+            display: block;
+        }
+        
+        .status.loading {
+            background-color: #cfe9ff;
+            color: #004085;
+        }
+        
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏥 Diabetes Risk Prediction</h1>
+            <p class="subtitle">Get your personalized diabetes risk assessment</p>
+        </header>
+        
+        <form id="predictionForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="bmi">BMI (Body Mass Index)</label>
+                    <input type="number" id="bmi" name="bmi" min="10" max="60" step="0.1" value="25" required>
+                    <small style="color: #999;">BMI = Weight(kg) / Height(m)²</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="temperature">Body Temperature (°C)</label>
+                    <input type="number" id="temperature" name="temperature" min="35" max="40" step="0.1" value="37.0" required>
+                    <small style="color: #999;">Normal: ~36.8°C</small>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="lifestyle">Lifestyle</label>
+                <select id="lifestyle" name="lifestyle" required>
+                    <option value="">-- Select Lifestyle --</option>
+                    <option value="active">Active</option>
+                    <option value="moderate" selected>Moderate</option>
+                    <option value="sedentary">Sedentary</option>
+                    <option value="unhealthy">Unhealthy</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="urination">
+                    <input type="checkbox" id="urinationCheckbox" name="urinationCheckbox">
+                    Specify Urination Frequency?
+                </label>
+            </div>
+            
+            <div class="form-group" id="urinationGroup" style="display:none;">
+                <label for="urination_frequency">Urination Frequency (times/day)</label>
+                <input type="number" id="urination_frequency" name="urination_frequency" min="1" max="30" step="1" value="6">
+            </div>
+            
+            <button type="submit">🔮 Get Prediction</button>
+        </form>
+        
+        <div id="status" class="status"></div>
+        <div id="result" class="result"></div>
+    </div>
+    
+    <script>
+        const API_URL = 'http://127.0.0.1:8000';
+        
+        // Show/hide urination frequency input
+        document.getElementById('urinationCheckbox').addEventListener('change', function() {
+            document.getElementById('urinationGroup').style.display = this.checked ? 'block' : 'none';
+        });
+        
+        // Handle form submission
+        document.getElementById('predictionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const statusDiv = document.getElementById('status');
+            const resultDiv = document.getElementById('result');
+            
+            // Show loading status
+            statusDiv.textContent = '⏳ Making prediction...';
+            statusDiv.className = 'status show loading';
+            resultDiv.classList.remove('show');
+            
+            try {
+                const payload = {
+                    bmi: parseFloat(document.getElementById('bmi').value),
+                    temperature: parseFloat(document.getElementById('temperature').value),
+                    lifestyle: document.getElementById('lifestyle').value,
+                };
+                
+                if (document.getElementById('urinationCheckbox').checked) {
+                    payload.urination_frequency = parseInt(document.getElementById('urination_frequency').value);
+                }
+                
+                const response = await fetch(`${API_URL}/predict`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const riskLevel = data.risk_level;
+                const probability = data.probability;
+                
+                // Show result
+                resultDiv.innerHTML = `
+                    <h2>Risk Level: ${riskLevel}</h2>
+                    <div class="probability">${(probability * 100).toFixed(2)}%</div>
+                    <p style="margin-top: 15px; font-size: 14px;">
+                        ${getRiskInterpretation(riskLevel)}
+                    </p>
+                `;
+                
+                resultDiv.className = `result show result-${riskLevel.toLowerCase()}`;
+                statusDiv.classList.remove('show');
+                
+            } catch (error) {
+                statusDiv.textContent = '❌ Error: ' + error.message;
+                statusDiv.className = 'status show error';
+                resultDiv.classList.remove('show');
+            }
+        });
+        
+        function getRiskInterpretation(riskLevel) {
+            const interpretations = {
+                'Low': '✅ Lower diabetes risk. Continue with healthy lifestyle habits.',
+                'Medium': '⚠️ Moderate diabetes risk. Consider lifestyle modifications and regular checkups.',
+                'High': '🚨 Higher diabetes risk. Consult with a healthcare professional.'
+            };
+            return interpretations[riskLevel] || 'Unable to interpret risk level.';
+        }
+        
+        // Check API health on load
+        window.addEventListener('load', async function() {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                console.log('API Health:', data);
+            } catch (error) {
+                console.error('Cannot connect to API:', error);
+                alert('⚠️ API Server is not responding. Make sure FastAPI is running on http://127.0.0.1:8000');
+            }
+        });
+    </script>
+</body>
+</html>
