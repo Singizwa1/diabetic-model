@@ -41,7 +41,7 @@ Set-Location "c:\Users\highe\OneDrive\Desktop\Model"
    - Docs at: http://127.0.0.1:8000/docs
 
 3. **Required Python Packages:**
-   - streamlit==1.40.2
+   - streamlit==1.56.0
    - requests==2.32.3
    - pandas==2.2.3
    - (already in requirements.txt)
@@ -65,49 +65,38 @@ ipconfig
 # Look for IPv4 Address under your active network
 ```
 
-## Streamlit Interface Features
+## Streamlit Interface Features (Current)
 
-### 1. 🔮 Make Prediction
-- Enter patient information:
-  - BMI (10-60)
-  - Body Temperature (35-40°C)
-  - Lifestyle (active, moderate, sedentary, unhealthy)
-  - Optional: Urination Frequency
-- Get instant risk assessment
-- View color-coded risk level (Low/Medium/High)
-- See probability score
+### 1. Authentication
+- Register (`POST /auth/register`)
+- Login (`POST /auth/login`)
+- Logout (`POST /auth/logout`)
+- Load current user (`GET /auth/me`)
 
-### 2. 📊 Model Metrics
-- View all model performance metrics:
-  - Accuracy, Precision, Recall
-  - F1-Score, ROC-AUC
-- Compare all trained models
-- See visualizations (bar charts)
-- Check training timestamp
+### 2. Password Reset with OTP
+- Request OTP (`POST /auth/password-reset`)
+- Verify OTP (`POST /auth/password-reset/verify`)
+- Confirm new password (`POST /auth/password-reset/confirm`)
 
-### 3. ➕ Add Training Data
-- Add new labeled patient data
-- Input fields:
-  - BMI
-  - Temperature
-  - Lifestyle
-  - Diabetes Status (Yes/No)
-  - Optional: Urination Frequency
-- Data stored for retraining
+### 3. Profile and Session
+- Create profile (`POST /profiles`)
+- Load latest profile (`GET /profiles/latest`)
+- Start new assessment session (`POST /sessions`)
+- List sessions (`GET /sessions`)
 
-### 4. 🔄 Retrain Model
-- Retrain with base data + new records
-- Automatic model comparison
-- Select best model by F1-score
-- View updated metrics
-- Progress tracking
+### 4. Daily Logs
+- Submit daily log (`POST /sessions/{session_id}/daily-logs`)
+- View session logs (`GET /sessions/{session_id}/daily-logs`)
 
-### 5. ℹ️ About
-- System documentation
-- Feature explanation
-- Usage guide
-- API endpoints reference
-- Model metrics explanation
+### 5. Complete and Predict
+- Complete session (`POST /sessions/{session_id}/complete`)
+- Run prediction (`POST /predictions/sessions/{session_id}/predict`)
+- View latest prediction (`GET /predictions/latest`)
+- Duplicate prediction is blocked per session; start a new session to predict again.
+
+### 6. Notifications
+- List notifications (`GET /notifications`)
+- Mark notification as read (`POST /notifications/{notification_id}/read`)
 
 ## Two-Terminal Setup
 
@@ -153,9 +142,10 @@ REM or
                        ▼
 ┌─────────────────────────────────────────────────────┐
 │           STREAMLIT FRONTEND (streamlit_app.py)     │
-│  - Patient input form                              │
-│  - Metrics visualization                           │
-│  - Data management interface                       │
+│  - Auth (register/login/logout)                    │
+│  - OTP password reset                              │
+│  - Profile/session/log workflow                    │
+│  - Prediction + notifications                      │
 └──────────────────────┬──────────────────────────────┘
                        │
             HTTP API Calls (requests)
@@ -163,12 +153,13 @@ REM or
                        ▼
 ┌─────────────────────────────────────────────────────┐
 │      FASTAPI BACKEND (app/main.py)                 │
-│      Endpoints:                                     │
-│  - POST /predict                                   │
-│  - POST /add-data                                  │
-│  - POST /retrain                                   │
-│  - GET  /metrics                                   │
-│  - GET  /health                                    │
+│      Endpoints used by Streamlit:                  │
+│  - /auth/*                                         │
+│  - /profiles/*                                     │
+│  - /sessions/*                                     │
+│  - /predictions/*                                  │
+│  - /notifications*                                 │
+│  - /health                                         │
 └──────────────────────┬──────────────────────────────┘
                        │
                        ▼
@@ -268,20 +259,20 @@ To allow other users to access the app:
 
 ## Data Storage
 
-- **Training data:** `data/dataset-diabete.xlsx`
-- **New labeled data:** `data/new_data.csv`
-- **Saved model:** `saved_model/model.pkl`
-- **Dataset info:** `data/` directory
+- **Backend database:** PostgreSQL (`DATABASE_URL`)
+- **Token/session and OTP cache:** Redis (`REDIS_*`)
+- **ML model artifact:** `saved_model/model.pkl`
+- **Training source data:** `data/` directory
 
 ## Next Steps
 
-1. ✅ Start FastAPI backend
-2. ✅ Start Streamlit frontend
-3. ✅ Open http://localhost:8501
-4. ✅ Enter patient data and make predictions
-5. ✅ View model metrics
-6. ✅ Add new training data
-7. ✅ Retrain model with new data
+1. Start FastAPI backend
+2. Start Streamlit frontend
+3. Open http://localhost:8501
+4. Register/Login in Streamlit
+5. Create profile and start session
+6. Submit 3 daily logs, complete session, run prediction
+7. If testing reset, use OTP flow from Authentication page
 
 ## Support
 
@@ -296,24 +287,22 @@ For issues or questions:
 ```
 Model/
 ├── app/
-│   ├── main.py                 # FastAPI app
-│   ├── model.py                # Model training
-│   ├── preprocessing.py        # Data cleaning
-│   ├── feature_engineering.py  # Feature creation
-│   ├── retrain.py             # Retraining logic
-│   └── utils.py               # Utility functions
-├── data/
-│   ├── dataset-diabete.xlsx   # Base training data
-│   └── new_data.csv           # Appended labeled data
+│   ├── main.py                 # FastAPI app factory
+│   ├── routes/                 # Auth/profile/session/prediction/admin/health routes
+│   ├── services/               # Business logic + ML integration + email
+│   ├── core/                   # Config and security
+│   ├── cache.py                # Redis client + token/session helpers
+│   └── database.py             # DB session and engine
 ├── saved_model/
-│   └── model.pkl              # Trained model artifact
-├── streamlit_app.py           # Streamlit UI
-├── run_streamlit.bat          # Windows batch runner
-├── run_streamlit.ps1          # PowerShell runner
-├── run_streamlit.py           # Python runner
-├── requirements.txt           # Dependencies
-├── README.md                  # Main documentation
-└── STREAMLIT_DEPLOYMENT.md   # This file
+│   └── model.pkl               # Trained model artifact
+├── data/                       # Training and related data
+├── streamlit_app.py            # Streamlit UI (auth + OTP + session workflow)
+├── run_streamlit.bat           # Windows batch runner
+├── run_streamlit.ps1           # PowerShell runner
+├── run_streamlit.py            # Python runner
+├── requirements.txt            # Dependencies
+├── README.md                   # Main documentation
+└── STREAMLIT_DEPLOYMENT.md     # This file
 ```
 
 ---

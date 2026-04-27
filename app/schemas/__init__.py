@@ -1,16 +1,3 @@
-"""
-Pydantic validation schemas for Diabetes Risk Prediction System.
-
-Schemas for:
-- Authentication (register, login, tokens)
-- User profiles
-- Assessment sessions
-- Daily logs
-- Predictions
-- Notifications
-- Health checks
-"""
-
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from datetime import datetime
 from typing import Optional, List
@@ -19,14 +6,12 @@ from enum import Enum
 
 
 class RiskLevelEnum(str, Enum):
-    """Risk assessment levels."""
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
 
 
 class SessionStatusEnum(str, Enum):
-    """Session lifecycle statuses."""
     COLLECTING = "collecting"
     COMPLETED = "completed"
     PREDICTED = "predicted"
@@ -49,7 +34,7 @@ class UserLogin(BaseModel):
 
 
 class TokenResponse(BaseModel):
-    """Redis token response."""
+    """JWT token response."""
     access_token: str
     token_type: str = "bearer"
     expires_in: int
@@ -62,8 +47,17 @@ class PasswordResetRequest(BaseModel):
 
 class PasswordResetConfirm(BaseModel):
     """Confirm password reset with token and new password."""
-    token: str
     new_password: str = Field(..., min_length=8)
+
+
+class PasswordResetVerify(BaseModel):
+    """Verify OTP code for password reset."""
+    otp: str = Field(..., min_length=4, max_length=8)
+
+
+class PasswordResetLinkResponse(BaseModel):
+    """Password reset request response."""
+    message: str
 
 
 # ==================== USER SCHEMAS ====================
@@ -77,7 +71,6 @@ class UserResponse(BaseModel):
     is_admin: bool
     created_at: datetime
     updated_at: datetime
-    message: Optional[str] = None
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -103,7 +96,6 @@ class UserProfileResponse(BaseModel):
     bmi: float
     created_at: datetime
     updated_at: datetime
-    message: Optional[str] = None
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -158,7 +150,6 @@ class AssessmentSessionResponse(BaseModel):
     daily_logs: List[DailyLogResponse] = []
     created_at: datetime
     updated_at: datetime
-    message: Optional[str] = None
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -175,7 +166,6 @@ class PredictionResponse(BaseModel):
     risk_level: RiskLevelEnum
     feature_payload: Optional[dict]
     created_at: datetime
-    message: Optional[str] = None
     
     model_config = ConfigDict(from_attributes=True, protected_namespaces=())
 
@@ -200,7 +190,7 @@ class ModelRegistryResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())
 
 
 # ==================== NOTIFICATION SCHEMAS ====================
@@ -226,26 +216,11 @@ class HealthCheckResponse(BaseModel):
     api_version: str
     model_loaded: bool
     database_connected: bool
-    redis_connected: bool
     timestamp: datetime
 
-
-# ==================== TRAINING SCHEMAS ====================
-
-class TrainingResultResponse(BaseModel):
-    """Model training result response."""
-    status: str
-    model_version: str
-    workflow_version: str
-    metrics: Optional[dict]
-    timestamp: str
-    message: Optional[str] = None
+    model_config = ConfigDict(protected_namespaces=())
 
 
-class ModelInfoResponse(BaseModel):
-    """Current model information."""
-    version: str
-    workflow: str
-    metrics: Optional[dict]
-    artifact_path: str
-    is_active: bool
+class PasswordResetConfirmResponse(BaseModel):
+    """Password reset confirmation response."""
+    message: str
