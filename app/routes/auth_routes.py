@@ -99,9 +99,6 @@ def request_password_reset(request: PasswordResetRequest, db: Session = Depends(
     return {"message": "If an account with that email exists, a password reset code has been sent."}
 
 
-
-
-
 @router.post("/password-reset/verify")
 def verify_password_reset(verify: PasswordResetVerify, db: Session = Depends(get_db)):
     """

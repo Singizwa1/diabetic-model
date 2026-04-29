@@ -6,7 +6,7 @@ from jwt import ExpiredSignatureError, InvalidTokenError
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
-from app.cache import TokenManager
+from app.cache import TokenManager, RedisUnavailableError
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -54,7 +54,13 @@ def create_access_token(user_id: str, email: str, is_admin: bool) -> tuple[str, 
         "is_admin": is_admin,
         "jti": jti,
     }
-    TokenManager.store_session(jti=jti, token_payload=redis_payload, ttl_seconds=expires_in)
+    try:
+        TokenManager.store_session(jti=jti, token_payload=redis_payload, ttl_seconds=expires_in)
+    except RedisUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication service temporarily unavailable",
+        ) from exc
 
     return token, expires_in
 
@@ -63,12 +69,19 @@ def verify_token(token: str) -> dict:
     """Verify JWT, ensure session exists in Redis, and enforce blacklist."""
     secret = settings.JWT_SECRET or settings.SECRET_KEY
 
-    if TokenManager.is_token_blacklisted(token):
+    try:
+        if TokenManager.is_token_blacklisted(token):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been blacklisted",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    except RedisUnavailableError as exc:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has been blacklisted",
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication service temporarily unavailable",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from exc
 
     try:
         decoded = jwt.decode(token, secret, algorithms=[settings.JWT_ALGORITHM])
@@ -86,12 +99,19 @@ def verify_token(token: str) -> dict:
         ) from exc
 
     jti = decoded.get("jti")
-    if not jti or not TokenManager.is_session_active(jti):
+    try:
+        if not jti or not TokenManager.is_session_active(jti):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token not found in Redis - may have been revoked",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    except RedisUnavailableError as exc:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token not found in Redis - may have been revoked",
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication service temporarily unavailable",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from exc
 
     return {
         "user_id": decoded.get("id"),

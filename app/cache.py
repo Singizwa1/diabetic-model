@@ -4,10 +4,15 @@ import json
 from typing import Optional, Dict, Any
 
 import redis
+from redis.exceptions import RedisError
 
 from app.core.config import get_settings
 
 settings = get_settings()
+
+
+class RedisUnavailableError(Exception):
+    """Raised when Redis cannot be reached for token/session operations."""
 
 
 def _parse_int(value: Any, default: int) -> int:
@@ -41,13 +46,19 @@ class TokenManager:
     def store_session(jti: str, token_payload: Dict[str, Any], ttl_seconds: int) -> bool:
         """Store JWT payload by JTI with TTL."""
         redis_key = f"{TokenManager.SESSION_PREFIX}{jti}"
-        return bool(redis_client.setex(redis_key, ttl_seconds, json.dumps(token_payload)))
+        try:
+            return bool(redis_client.setex(redis_key, ttl_seconds, json.dumps(token_payload)))
+        except RedisError as exc:
+            raise RedisUnavailableError("Unable to store token session in Redis") from exc
 
     @staticmethod
     def get_session(jti: str) -> Optional[Dict[str, Any]]:
         """Get JWT payload from Redis by JTI."""
         redis_key = f"{TokenManager.SESSION_PREFIX}{jti}"
-        data = redis_client.get(redis_key)
+        try:
+            data = redis_client.get(redis_key)
+        except RedisError as exc:
+            raise RedisUnavailableError("Unable to read token session from Redis") from exc
         if not data:
             return None
         return json.loads(data)
@@ -56,25 +67,37 @@ class TokenManager:
     def is_session_active(jti: str) -> bool:
         """Check if JWT session exists in Redis."""
         redis_key = f"{TokenManager.SESSION_PREFIX}{jti}"
-        return bool(redis_client.exists(redis_key))
+        try:
+            return bool(redis_client.exists(redis_key))
+        except RedisError as exc:
+            raise RedisUnavailableError("Unable to verify token session in Redis") from exc
 
     @staticmethod
     def remove_session(jti: str) -> bool:
         """Remove JWT session by JTI."""
         redis_key = f"{TokenManager.SESSION_PREFIX}{jti}"
-        return bool(redis_client.delete(redis_key))
+        try:
+            return bool(redis_client.delete(redis_key))
+        except RedisError as exc:
+            raise RedisUnavailableError("Unable to remove token session from Redis") from exc
 
     @staticmethod
     def blacklist_token(token: str, ttl_seconds: int = 24 * 60 * 60) -> bool:
         """Blacklist full token string with TTL for immediate logout/revocation."""
         redis_key = f"{TokenManager.BLACKLIST_PREFIX}{token}"
-        return bool(redis_client.setex(redis_key, ttl_seconds, "true"))
+        try:
+            return bool(redis_client.setex(redis_key, ttl_seconds, "true"))
+        except RedisError as exc:
+            raise RedisUnavailableError("Unable to blacklist token in Redis") from exc
 
     @staticmethod
     def is_token_blacklisted(token: str) -> bool:
         """Check whether token is blacklisted."""
         redis_key = f"{TokenManager.BLACKLIST_PREFIX}{token}"
-        return bool(redis_client.exists(redis_key))
+        try:
+            return bool(redis_client.exists(redis_key))
+        except RedisError as exc:
+            raise RedisUnavailableError("Unable to check token blacklist in Redis") from exc
 
 
 def check_redis_connection():

@@ -10,7 +10,7 @@ import random
 from app.models import User
 from app.schemas import UserRegister, UserLogin, TokenResponse, PasswordResetVerify
 from app.core.security import hash_password, verify_password, create_access_token
-from app.cache import TokenManager, redis_client
+from app.cache import TokenManager, redis_client, RedisUnavailableError
 from app.services.email_service import EmailService
 from app.core.config import get_settings
 
@@ -117,14 +117,26 @@ class AuthService:
             True if logged out
         """
         # Blacklist full token immediately
-        TokenManager.blacklist_token(token)
+        try:
+            TokenManager.blacklist_token(token)
+        except RedisUnavailableError:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication service temporarily unavailable"
+            )
 
         # Remove associated session by JTI if token can be decoded
         try:
             decoded = jwt.decode(token, options={"verify_signature": False})
             jti = decoded.get("jti")
             if jti:
-                TokenManager.remove_session(jti)
+                try:
+                    TokenManager.remove_session(jti)
+                except RedisUnavailableError:
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail="Authentication service temporarily unavailable"
+                    )
         except InvalidTokenError:
             pass
 
@@ -175,7 +187,10 @@ class AuthService:
             pass
 
         if not email:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired OTP")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired OTP"
+            )
 
         # Create reset session: resetSession:{email} -> email for 10 minutes
         session_key = f"resetSession:{email}"
@@ -183,7 +198,10 @@ class AuthService:
             redis_client.setex(session_key, 600, email)
             redis_client.delete(redis_key)
         except Exception:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Internal server error"
+            )
 
         return True
 
@@ -194,20 +212,32 @@ class AuthService:
         try:
             keys = redis_client.keys("resetSession:*")
         except Exception:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Internal server error"
+            )
 
         if not keys:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No active reset session")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No active reset session"
+            )
 
         # Use the first session key
         session_key = keys[0]
         email = redis_client.get(session_key)
         if not email:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Reset session expired or invalid")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Reset session expired or invalid"
+            )
 
         user = db.query(User).filter(User.email == email).first()
         if not user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
 
         user.password_hash = hash_password(new_password)
         db.add(user)
