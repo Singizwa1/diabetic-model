@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     EMAIL_PASSWORD: str
     #RESEND_API_KEY: str
     SENDGRID_API_KEY: str
-    
+    EMAIL_FROM_NAME: str = "Diabetic Risk Prediction"
     # Admin
     ADMIN_EMAIL: str
     ADMIN_PASSWORD: str
