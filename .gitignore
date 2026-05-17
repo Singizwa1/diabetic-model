@@ -27,11 +27,6 @@ ENV/
 .DS_Store
 Thumbs.db
 
-# Generated models and artifacts
-saved_model/*.pkl
-saved_model/*.joblib
-saved_model/*.pickle
-saved_model/*.sav
 
 # Local data inputs and generated outputs
 /data/*.xlsx
