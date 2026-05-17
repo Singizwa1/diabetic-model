@@ -172,7 +172,6 @@ def main() -> None:
         logger.info("\n📝 Next steps:")
         logger.info("  1. Start the API: python -m uvicorn app.main:app --reload")
         logger.info("  2. View Swagger docs: http://localhost:8000/docs")
-        logger.info("  3. Start Streamlit: streamlit run streamlit_app.py")
         logger.info("\n🔑 Admin credentials:")
         logger.info(f"   Email: {settings.ADMIN_EMAIL}")
         logger.info("   Password: [hidden - use ADMIN_PASSWORD in .env]")

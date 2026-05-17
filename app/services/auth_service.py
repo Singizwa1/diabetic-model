@@ -125,7 +125,7 @@ class AuthService:
                 detail="Authentication service temporarily unavailable"
             )
 
-        # Remove associated session by JTI if token can be decoded
+
         try:
             decoded = jwt.decode(token, options={"verify_signature": False})
             jti = decoded.get("jti")

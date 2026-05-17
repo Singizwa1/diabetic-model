@@ -19,7 +19,6 @@ A **production-ready REST API** for diabetes risk prediction featuring:
 - ✅ **Trained ML model** (scikit-learn + XGBoost) for risk prediction
 - ✅ **Email notifications** for high-risk assessments
 - ✅ **Admin dashboard** for user management and statistics
-- ✅ **Streamlit UI** for testing and manual assessments
 - ✅ **Complete documentation** (SETUP, API examples, guides)
 
 ---
@@ -74,7 +73,7 @@ python -m uvicorn app.main:app --reload
 
 ```
 ┌─────────────────────────────────────────┐
-│  Client (Mobile/Web/Streamlit)          │
+│  Client (Mobile/Web)                    │
 └──────────────────┬──────────────────────┘
                    │
                    ▼
@@ -190,7 +189,15 @@ See `requirements.txt` for exact versions.
 - ✅ Logging and error handling
 - ✅ CORS middleware configured
 - ✅ Health check endpoint
-- ✅ Docker-ready structure
+- ✅ Render blueprint for backend deployment
+
+### Render + Neon
+
+1. Create a Neon Postgres database and copy its `DATABASE_URL`.
+2. Create a Render Web Service from this repo and use `render.yaml`.
+3. Set the required environment variables in Render, especially `DATABASE_URL`, `SECRET_KEY`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and the email settings.
+4. If you keep Redis auth enabled, point `REDIS_HOST` and `REDIS_PORT` to a reachable Redis service because Neon does not provide Redis.
+5. Deploy the service and verify `GET /health` and `GET /docs`.
 
 ---
 
@@ -226,7 +233,6 @@ See `requirements.txt` for exact versions.
 │   └── model.pkl          # Trained model ✓
 ├── data/
 │   └── Dataset_Diabetes_Final.xlsx  # Training data ✓
-├── streamlit_app.py       # Web UI ✓
 ├── quick_start.py         # Setup automation
 ├── train_mobile_model.py  # Retraining script ✓
 ├── requirements.txt       # Dependencies
@@ -267,27 +273,15 @@ MIT License - This project is open source and free to use.
 
 **🎉 Full-featured diabetes risk prediction API - Ready for production!**
 
-You need TWO terminals running simultaneously:
+You need one terminal for the backend:
 
-**Terminal 1 - FastAPI Backend:**
+**Terminal - FastAPI Backend:**
 ```bash
 Set-Location "c:\Users\highe\OneDrive\Desktop\Model"
 .\.venv\Scripts\python -m uvicorn app.main:app --reload
 ```
 - Runs on: http://127.0.0.1:8000
 - API Documentation: http://127.0.0.1:8000/docs
-
-**Terminal 2 - Streamlit Frontend:**
-```bash
-Set-Location "c:\Users\highe\OneDrive\Desktop\Model"
-.\run_streamlit.bat
-```
-- Runs on: http://localhost:8501
-- Interactive UI for predictions, metrics, and retraining
-
-Both terminals should show:
-- FastAPI: "Uvicorn running on http://127.0.0.1:8000"
-- Streamlit: "You can now view your Streamlit app in your browser"
 
 ## Required Dataset
 
@@ -349,39 +343,7 @@ Returns best model name and full metric comparison table.
 - 0.30 to <0.70       -> Medium
 - >= 0.70             -> High
 
-## Streamlit UI Features
-
-### 🔮 Make Prediction
-- Enter patient BMI, temperature, and lifestyle
-- Get instant risk prediction
-- View color-coded risk level with probability
-- See input summary
-
-### 📊 Model Metrics
-- View all model performance metrics
-- See model comparison table
-- Visualize metrics (accuracy, F1-score, etc.)
-- Check training timestamp
-
-### ➕ Add Training Data
-- Add new labeled patient records
-- Input patient features and diabetes status
-- Data stored for future retraining
-
-### 🔄 Retrain Model
-- Retrain with base data + new records
-- Automatic model comparison
-- View updated performance metrics
-- Real-time progress tracking
-
-### ℹ️ About
-- System documentation
-- Feature explanations
-- Usage guide and API reference
-- Data flow diagram
-
 ## Notes
 
-- If no model file exists, call /retrain first
-- /predict can optionally receive urination_frequency; if omitted, backend generates it dynamically
-- For detailed deployment info, see: [STREAMLIT_DEPLOYMENT.md](STREAMLIT_DEPLOYMENT.md)
+- If no model file exists, call `/retrain` first
+- `/predict` can optionally receive `urination_frequency`; if omitted, backend generates it dynamically

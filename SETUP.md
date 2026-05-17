@@ -7,7 +7,7 @@ This is a **production-ready FastAPI backend** for a diabetes risk prediction sy
 - ✅ **PostgreSQL database** with 7 ORM models
 - ✅ **ML model integration** (scikit-learn + XGBoost) with trained model.pkl
 - ✅ **31+ REST API endpoints** with Swagger documentation
-- ✅ **Streamlit UI** for testing and manual assessments
+ - ✅ **Backend-only deployment** for Render + Neon
 
 ---
 
@@ -177,7 +177,6 @@ Expected output:
 📝 Next steps:
   1. Start the API: python -m uvicorn app.main:app --reload
   2. View Swagger docs: http://localhost:8000/docs
-  3. Start Streamlit: streamlit run streamlit_app.py
 ```
 
 ---
@@ -257,32 +256,11 @@ Now you can test endpoints like:
 
 ---
 
-## Step 8 (Optional): Start Streamlit UI for Testing
-
-In **new terminal window**:
-
-```bash
-# Activate virtual environment
-venv\Scripts\activate
-
-# Start Streamlit
-streamlit run streamlit_app.py
-```
-
-Expected output:
-```
-  You can now view your Streamlit app in your browser.
-  
-  URL: http://localhost:8501
-```
-
----
-
 ## API Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  Client (Mobile App / Streamlit / Browser)              │
+│  Client (Mobile App / Browser)                          │
 │  Sends: GET/POST with Bearer Token in Authorization     │
 └────────────────┬────────────────────────────────────────┘
                  │
