@@ -1,4 +1,7 @@
 import resend
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from sqlalchemy.orm import Session
 from uuid import UUID
 from fastapi import BackgroundTasks
@@ -19,7 +22,7 @@ class EmailService:
     @staticmethod
     def _send_email(to_email: str, subject: str, html_body: str) -> bool:
         """
-        Send email via Resend API (works on Render free tier).
+        Send email — tries Resend first, falls back to SMTP SSL (port 465).
 
         Args:
             to_email: Recipient email
@@ -29,20 +32,38 @@ class EmailService:
         Returns:
             True if successful, False otherwise
         """
+        # --- Try Resend first ---
         try:
             resend.api_key = settings.RESEND_API_KEY
-
             resend.Emails.send({
                 "from": settings.EMAIL_FROM,
                 "to": to_email,
                 "subject": subject,
                 "html": html_body,
             })
-
-            logger.info(f"✅ Email sent successfully to {to_email}")
+            logger.info(f"✅ Email sent via Resend to {to_email}")
             return True
-        except Exception as e:
-            logger.error(f"❌ Email Error: {str(e)}")
+        except Exception as resend_error:
+            logger.warning(f"⚠️ Resend failed: {str(resend_error)} — trying SMTP SSL...")
+
+        # --- Fallback: Gmail SMTP SSL port 465 ---
+        try:
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subject
+            msg["From"] = settings.EMAIL_FROM
+            msg["To"] = to_email
+
+            part = MIMEText(html_body, "html")
+            msg.attach(part)
+
+            with smtplib.SMTP_SSL(settings.EMAIL_HOST, 465) as server:
+                server.login(settings.EMAIL_USER, settings.EMAIL_PASSWORD)
+                server.sendmail(settings.EMAIL_USER, to_email, msg.as_string())
+
+            logger.info(f"✅ Email sent via SMTP SSL to {to_email}")
+            return True
+        except Exception as smtp_error:
+            logger.error(f"❌ SMTP SSL also failed: {str(smtp_error)}")
             return False
 
     # ==================== BACKGROUND TASK WRAPPERS ====================
