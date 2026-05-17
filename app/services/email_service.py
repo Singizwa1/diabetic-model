@@ -1,4 +1,3 @@
-import resend
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -6,6 +5,9 @@ from sqlalchemy.orm import Session
 from uuid import UUID
 from fastapi import BackgroundTasks
 import logging
+
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail, Email, To, Content
 
 from app.core.config import get_settings
 from app.models import Notification, User
@@ -22,7 +24,7 @@ class EmailService:
     @staticmethod
     def _send_email(to_email: str, subject: str, html_body: str) -> bool:
         """
-        Send email — tries Resend first, falls back to SMTP SSL (port 465).
+        Send email — tries SendGrid first, falls back to SMTP SSL (port 465).
 
         Args:
             to_email: Recipient email
@@ -32,19 +34,28 @@ class EmailService:
         Returns:
             True if successful, False otherwise
         """
-        # --- Try Resend first ---
+        # --- Try SendGrid first ---
         try:
-            resend.api_key = settings.RESEND_API_KEY
-            resend.Emails.send({
-                "from": settings.EMAIL_FROM,
-                "to": to_email,
-                "subject": subject,
-                "html": html_body,
-            })
-            logger.info(f"✅ Email sent via Resend to {to_email}")
-            return True
-        except Exception as resend_error:
-            logger.warning(f"⚠️ Resend failed: {str(resend_error)} — trying SMTP SSL...")
+            message = Mail(
+                from_email=Email(settings.EMAIL_FROM, settings.EMAIL_FROM_NAME),
+                to_emails=To(to_email),
+                subject=subject,
+                html_content=Content("text/html", html_body),
+            )
+            sg = SendGridAPIClient(api_key=settings.SENDGRID_API_KEY)
+            response = sg.send(message)
+
+            if response.status_code in (200, 202):
+                logger.info(f"✅ Email sent via SendGrid to {to_email}")
+                return True
+            else:
+                logger.warning(
+                    f"⚠️ SendGrid returned status {response.status_code} — trying SMTP SSL..."
+                )
+        except Exception as sendgrid_error:
+            logger.warning(
+                f"⚠️ SendGrid failed: {str(sendgrid_error)} — trying SMTP SSL..."
+            )
 
         # --- Fallback: Gmail SMTP SSL port 465 ---
         try:
@@ -140,9 +151,11 @@ class EmailService:
                 <body>
                     <h2>Diabetes Risk Assessment Alert</h2>
                     <p>Dear <strong>{user_name}</strong>,</p>
-                    <p>Your recent diabetes risk assessment has returned a <strong style="color:red">HIGH RISK</strong> result.</p>
+                    <p>Your recent diabetes risk assessment has returned a
+                       <strong style="color:red">HIGH RISK</strong> result.</p>
                     <p><strong>Risk Score:</strong> {probability:.1%}</p>
-                    <p>This assessment is based on your health profile and reported symptoms over the past few days.</p>
+                    <p>This assessment is based on your health profile and reported
+                       symptoms over the past few days.</p>
                     <h3>Recommended Actions:</h3>
                     <ul>
                         <li>Schedule a consultation with your healthcare provider</li>
@@ -150,7 +163,8 @@ class EmailService:
                         <li>Monitor your symptoms regularly</li>
                         <li>Follow up with another assessment in 1-2 weeks</li>
                     </ul>
-                    <p><strong>Important:</strong> This assessment is for informational purposes only and should not replace professional medical advice.</p>
+                    <p><strong>Important:</strong> This assessment is for informational
+                       purposes only and should not replace professional medical advice.</p>
                     <p>Best regards,<br>Diabetes Risk Prediction System</p>
                 </body>
             </html>
@@ -232,12 +246,15 @@ class EmailService:
                 <p>Dear <strong>{user_name}</strong>,</p>
                 <p>Your 3-day diabetes risk assessment is complete.</p>
                 <p><strong>Risk Score:</strong> {probability:.1%}</p>
-                <p><strong>Risk Level:</strong> <span style="color:{color}; font-weight:bold">{risk_value.upper()}</span></p>
+                <p><strong>Risk Level:</strong>
+                   <span style="color:{color}; font-weight:bold">{risk_value.upper()}</span>
+                </p>
                 <h3>{recommendation_title}</h3>
                 <ul>
                     {''.join(f'<li>{item}</li>' for item in recommendations)}
                 </ul>
-                <p><strong>Important:</strong> This result is informational only and does not replace professional medical advice.</p>
+                <p><strong>Important:</strong> This result is informational only and
+                   does not replace professional medical advice.</p>
                 <p>Best regards,<br>Diabetes Risk Prediction System</p>
             </body>
         </html>
@@ -259,7 +276,8 @@ class EmailService:
                 <body>
                     <h2>Password Reset Request</h2>
                     <p>Dear <strong>{user_name}</strong>,</p>
-                    <p>We received a request to reset your password. Use the one-time code below to verify this request. The code expires in 5 minutes.</p>
+                    <p>We received a request to reset your password. Use the one-time
+                       code below to verify this request. The code expires in 5 minutes.</p>
                     <p><strong style="font-size:24px; letter-spacing:4px">{otp_code}</strong></p>
                     <p>If you did not request this, please ignore this email.</p>
                     <p>Best regards,<br>Diabetes Risk Prediction System</p>
@@ -300,10 +318,14 @@ class EmailService:
         db: Session, notification_id: UUID, user_id: UUID
     ) -> Notification:
         """Mark a notification as read."""
-        notification = db.query(Notification).filter(
-            Notification.id == notification_id,
-            Notification.user_id == user_id,
-        ).first()
+        notification = (
+            db.query(Notification)
+            .filter(
+                Notification.id == notification_id,
+                Notification.user_id == user_id,
+            )
+            .first()
+        )
 
         if not notification:
             raise Exception("Notification not found")
