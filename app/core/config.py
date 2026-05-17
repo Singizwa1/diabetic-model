@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     EMAIL_FROM: str
     EMAIL_USER: str
     EMAIL_PASSWORD: str
+    RESEND_API_KEY: str
     
     # Admin
     ADMIN_EMAIL: str

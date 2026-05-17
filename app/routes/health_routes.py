@@ -8,8 +8,26 @@ from app.schemas import NotificationResponse, HealthCheckResponse
 from app.core.security import get_current_user
 from app.services.email_service import EmailService
 from app.services.ml_service import MLService
+from app.core.config import get_settings
 
 router = APIRouter()
+settings = get_settings()
+
+
+# ==================== ROOT ENTRY POINT ====================
+
+@router.get("/", tags=["Root"])
+def root():
+    """
+    Welcome endpoint - root path.
+    
+    Returns:
+        API information and documentation links
+    """
+    return {
+        "message": "Welcome to Diabetes Risk Prediction API",
+     
+    }
 
 
 # ==================== NOTIFICATIONS ====================
