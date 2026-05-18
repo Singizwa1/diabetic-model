@@ -63,17 +63,23 @@ async def shutdown_event():
 
 async def self_ping():
     """Ping /health every 30 seconds to prevent Render free tier from sleeping."""
-    await asyncio.sleep(30)  # wait for server to fully start
+    # Wait longer for the app to fully start
+    await asyncio.sleep(60)
+    
+    # Determine the correct URL based on environment
+    url = "https://diabetic-model-m1ye.onrender.com/health"
+    if settings.ENVIRONMENT == "development":
+        url = "http://localhost:8000/health"
+    
     while True:
         try:
-            async with httpx.AsyncClient() as client:
-                await client.get(
-                    "https://diabetic-model-m1ye.onrender.com/health",
-                    timeout=10
-                )
-                logger.info("🏓 Self-ping successful")
-        except Exception as e:
-            logger.warning(f"⚠️ Self-ping failed: {str(e)}")
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.get(url)
+                if response.status_code == 200:
+                    logger.debug("🏓 Self-ping successful")
+        except Exception:
+            # Silently fail - connection errors are expected during startup/shutdown
+            pass
         await asyncio.sleep(30)
 
 

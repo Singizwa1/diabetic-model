@@ -5,6 +5,7 @@ uvicorn[standard]==0.30.6
 # Database
 sqlalchemy==2.0.44
 psycopg[binary]==3.2.4
+alembic==1.13.1
 
 # Cache & Sessions
 redis==5.0.1
