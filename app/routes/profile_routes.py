@@ -74,6 +74,28 @@ def get_latest_profile(
     return profile
 
 
+@router.get("/{profile_id}", response_model=UserProfileResponse)
+def get_profile(
+    profile_id: UUID,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get a specific profile by ID.
+    
+    Args:
+        profile_id: Profile ID to retrieve
+        current_user: Current authenticated user
+        db: Database session
+    
+    Returns:
+        Profile data
+    """
+    user_id = UUID(current_user.get("user_id"))
+    profile = ProfileService.get_profile(db, user_id, profile_id)
+    return profile
+
+
 @router.put("/{profile_id}", response_model=UserProfileResponse)
 def update_profile(
     profile_id: UUID,

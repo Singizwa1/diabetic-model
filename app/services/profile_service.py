@@ -110,6 +110,34 @@ class ProfileService:
         return profile
     
     @staticmethod
+    def get_profile(db: Session, user_id: UUID, profile_id: UUID) -> UserProfile:
+        """
+        Get a specific profile by ID (with authorization check).
+        
+        Args:
+            db: Database session
+            user_id: Current user ID (for authorization)
+            profile_id: Profile ID to retrieve
+        
+        Returns:
+            Profile data
+        
+        Raises:
+            HTTPException: If profile not found or not authorized
+        """
+        profile = db.query(UserProfile).filter(
+            UserProfile.id == profile_id,
+            UserProfile.user_id == user_id
+        ).first()
+        
+        if not profile:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Profile not found"
+            )
+        return profile
+    
+    @staticmethod
     def _calculate_bmi(height_cm: float, weight_kg: float) -> float:
         """
         Calculate BMI from height and weight.
