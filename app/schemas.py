@@ -75,6 +75,7 @@ class UserResponse(BaseModel):
     full_name: Optional[str]
     is_active: bool
     is_admin: bool
+    last_login_at: Optional[datetime]
     created_at: datetime
     updated_at: datetime
     message: Optional[str] = None

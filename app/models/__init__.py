@@ -34,6 +34,7 @@ class User(Base):
     is_admin = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_login_at = Column(DateTime, nullable=True, index=True)
     
     # Relationships
     profiles = relationship("UserProfile", back_populates="user", cascade="all, delete-orphan")
